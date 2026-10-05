@@ -96,7 +96,7 @@ def _holdout_center_decoding(
     method: str,
     random_state: int,
 ) -> np.ndarray:
-    """Legacy notebook-style forecast: next price ≈ next symbol cluster center."""
+    """Cluster-center forecast: next price ≈ next discrete symbol center."""
     disc = Discretizer(n_symbols=n_symbols, method=method, random_state=random_state)
     train_sym = disc.fit_transform(train_prices)
     hmm = DiscreteHMM(
@@ -173,7 +173,7 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Dict[str, Any]:
     best_discrete_states = int(discrete_sel.iloc[0]["n_states"])
     best_gaussian_states = int(gaussian_sel.iloc[0]["n_states"])
 
-    # Enhanced original idea: discrete HMM regimes + drift forecast
+    # Discrete HMM regimes + drift forecast
     regime_drift = DiscreteHMMRegimeDrift(
         n_states=best_discrete_states,
         n_symbols=cfg.n_symbols,
