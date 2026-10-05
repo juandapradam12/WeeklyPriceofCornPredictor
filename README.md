@@ -10,11 +10,11 @@ Data source: [Weekly Corn Prices (Kaggle)](https://www.kaggle.com/nickwong64/cor
 
 ## Why HMMs for corn prices?
 
-Weekly agricultural futures are not a single stationary process. They alternate between quieter mean-reverting stretches and higher-volatility moves driven by inventory, weather, and macro shocks. An HMM treats those episodes as **latent regimes** \(z_t\) that emit observable prices or returns \(x_t\):
+Weekly agricultural futures are not a single stationary process. They alternate between quieter mean-reverting stretches and higher-volatility moves driven by inventory, weather, and macro shocks. An HMM treats those episodes as **latent regimes** $z_t$ that emit observable prices or returns $x_t$:
 
-\[
+$$
 z_t \sim P(z_t \mid z_{t-1}), \qquad x_t \sim P(x_t \mid z_t)
-\]
+$$
 
 Learning those distributions gives both a **regime timeline** and a **probabilistic one-step forecast**.
 
@@ -100,16 +100,28 @@ flowchart LR
 ## Algorithms (core ideas)
 
 ### Discrete HMM (enhanced original)
-Quantize prices with K-Means → categorical emissions → log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
+Quantize prices with K-Means into $M$ symbols, then fit a categorical HMM with $N$ hidden states using log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
 
 ### Gaussian / Sticky HMMs
-Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts \(κ\) so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
+Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts $\kappa$ so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
 
 ### Soft regime-switching AR(1)
-Each regime has its own AR(1). Soft EM uses state responsibilities instead of hard Viterbi labels when updating \((c_k, \phi_k, \sigma_k)\).
+Each regime $k$ has its own AR(1) on returns $r_t$:
+
+$$
+r_t = c_{z_t} + \phi_{z_t}\, r_{t-1} + \varepsilon_t, \qquad \varepsilon_t \sim \mathcal{N}(0, \sigma_{z_t}^2)
+$$
+
+Soft EM updates $(c_k, \phi_k, \sigma_k)$ with Forward–Backward responsibilities instead of hard Viterbi labels.
 
 ### Exogenous models
-Lagged macro/agri proxies enter either a linear return regression or a multivariate Gaussian HMM emission vector.
+Lagged macro/agri proxies $x_{t-1}$ enter either a linear return regression
+
+$$
+r_t = \beta_0 + \beta^\top x_{t-1} + u_t
+$$
+
+or a multivariate Gaussian HMM emission vector $[r_t,\; x_{t-1}]$.
 
 ---
 
