@@ -56,22 +56,22 @@ reports/
 
 ```mermaid
 flowchart LR
-  A[Weekly prices / OHLC] --> B[Features + time split]
+  A[Weekly prices / OHLC / live exo] --> B[Features + time split]
   B --> S[BIC state selection]
   S --> C1[Discretizer]
-  S --> C2[Log-returns / OHLC feats]
+  S --> C2[Log-returns / OHLC / exo feats]
   C1 --> D1[Discrete HMM]
   D1 --> E1[Regime drift / return HMM]
-  C2 --> D2[Gaussian / MV / OHLC HMM]
-  C2 --> D3[Regime-Switching AR]
-  C2 --> D4[ARIMA / GARCH]
+  C2 --> D2[Gaussian / MV / OHLC / Sticky HMM]
+  C2 --> D3[Hard + Soft Regime-Switching AR]
+  C2 --> D4[ARIMA / GARCH / Exo models]
   B --> D5[Baselines + Ensemble]
-  E1 --> F[Holdout + walk-forward + DM tests]
+  E1 --> F[Holdout + walk-forward + DM + PIT]
   D2 --> F
   D3 --> F
   D4 --> F
   D5 --> F
-  F --> G[Figures + CSV reports]
+  F --> G[Figures + CSV reports + Streamlit]
 ```
 
 ---
@@ -85,12 +85,31 @@ flowchart LR
 | Complementary HMM | Discrete Return HMM | Quantized log-returns |
 | Complementary HMM | Gaussian / MV Gaussian HMM | Continuous emissions on returns |
 | Complementary HMM | OHLC Gaussian HMM | Uses open/high/low/close features |
-| Complementary RS | Regime-switching AR(1) | Interpretable AR dynamics per regime |
+| Complementary HMM | Sticky Gaussian HMM | Dirichlet priors + sticky self-transitions |
+| Complementary RS | Regime-switching AR(1) (hard EM) | Interpretable AR dynamics per regime |
+| Complementary RS | Soft Regime-Switching AR(1) | Forward–Backward responsibilities + WLS |
+| Exogenous | Exo regression / Exo Gaussian HMM | Lagged oil, DXY, wheat, soy returns |
 | Classical | ARIMA(1,1,1), GARCH(1,1) | Standard time-series baselines |
 | Meta | Equal-weight ensemble | Blend Gaussian HMM + discrete drift + drift |
 | Naive | Persistence / MA / Drift | Sanity checks |
 
 **Important:** forecasting the next **cluster center** (legacy notebook idea) is kept only as an educational baseline — quantization error makes it unusable for price RMSE.
+
+---
+
+## Algorithms (core ideas)
+
+### Discrete HMM (enhanced original)
+Quantize prices with K-Means → categorical emissions → log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
+
+### Gaussian / Sticky HMMs
+Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts \(κ\) so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
+
+### Soft regime-switching AR(1)
+Each regime has its own AR(1). Soft EM uses state responsibilities instead of hard Viterbi labels when updating \((c_k, \phi_k, \sigma_k)\).
+
+### Exogenous models
+Lagged macro/agri proxies enter either a linear return regression or a multivariate Gaussian HMM emission vector.
 
 ---
 
@@ -143,7 +162,24 @@ print(model.predict_next(prices))
 3. **Diebold–Mariano** tests vs persistence (squared-error loss)
 4. **Walk-forward** expanding-window backtest with periodic refits
 5. **Regime analytics** — occupancy, mean/max duration, return moments
-6. **CSV reports** under `reports/` for every table above
+6. **Predictive intervals + PIT calibration** (advanced pipeline)
+7. **CSV reports** under `reports/` for every table above
+
+### Reports inventory
+
+| File | Contents |
+| --- | --- |
+| `reports/holdout_metrics.csv` | Core model holdout metrics |
+| `reports/holdout_forecasts.csv` | Per-week predictions |
+| `reports/diebold_mariano.csv` | DM stats vs persistence |
+| `reports/walk_forward_metrics.csv` | Expanding-window metrics |
+| `reports/*_state_selection.csv` | BIC grids |
+| `reports/regime_*.csv` | Regime occupancy / runs |
+| `reports/advanced_holdout_metrics.csv` | Sticky / soft RS metrics |
+| `reports/exogenous_metrics.csv` | Exo model holdout metrics |
+| `reports/calibration_summary.csv` | Interval coverage + PIT KS |
+| `reports/hedge_*.csv` | Simulator equity + stats |
+| `reports/sticky_regime_summary.csv` | Sticky HMM regime table |
 
 ---
 
@@ -228,6 +264,8 @@ From `python scripts/run_experiment.py` on `corn2013-2017.txt`:
 | `data/corn2013-2017.txt` | Weekly close prices (2013–2017) |
 | `data/corn2015-2017.txt` | Shorter close-price subset |
 | `data/corn_OHLC2013-2017.txt` | Weekly open / high / low / close |
+| `data/cache/corn_weekly_live.csv` | Live Yahoo `ZC=F` weekly closes (refreshable) |
+| `data/cache/exogenous_weekly.csv` | Live weekly oil / DXY / wheat / soy proxies |
 
 ---
 
@@ -293,6 +331,8 @@ Interactive regime decode, predictive interval, and equity overlay.
 ![PIT histogram](figures/18_pit_histogram.png)
 
 ![Hedge equity](figures/19_hedge_equity.png)
+
+![Advanced RMSE](figures/20_advanced_rmse.png)
 
 ![Exogenous RMSE](figures/21_exogenous_rmse.png)
 
