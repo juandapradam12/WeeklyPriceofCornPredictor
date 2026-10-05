@@ -10,11 +10,11 @@ Data source: [Weekly Corn Prices (Kaggle)](https://www.kaggle.com/nickwong64/cor
 
 ## Why HMMs for corn prices?
 
-Weekly agricultural futures are not a single stationary process. They alternate between quieter mean-reverting stretches and higher-volatility moves driven by inventory, weather, and macro shocks. An HMM treats those episodes as **latent regimes** `z_t` that emit observable prices or returns `x_t`:
+Weekly agricultural futures are not a single stationary process. They alternate between quieter mean-reverting stretches and higher-volatility moves driven by inventory, weather, and macro shocks. An HMM treats those episodes as **latent regimes** $z_t$ that emit observable prices or returns $x_t$:
 
-```text
-z_t ~ P(z_t | z_{t-1}),     x_t ~ P(x_t | z_t)
-```
+$$
+z_t \sim P(z_t \mid z_{t-1}), \qquad x_t \sim P(x_t \mid z_t)
+$$
 
 Learning those distributions gives both a **regime timeline** and a **probabilistic one-step forecast**.
 
