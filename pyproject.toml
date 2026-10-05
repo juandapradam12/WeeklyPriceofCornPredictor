@@ -18,6 +18,9 @@ dependencies = [
   "hmmlearn>=0.3.0",
   "statsmodels>=0.14",
   "arch>=6.0",
+  "yfinance>=0.2.40",
+  "streamlit>=1.28",
+  "plotly>=5.18",
 ]
 
 [project.optional-dependencies]

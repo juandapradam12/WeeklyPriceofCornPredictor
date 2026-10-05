@@ -22,3 +22,5 @@ jobs:
         run: python -m pytest -q
       - name: Smoke experiment (no walk-forward)
         run: python scripts/run_experiment.py --skip-walk-forward
+      - name: Smoke advanced experiment
+        run: python scripts/run_advanced.py
