@@ -1,9 +1,8 @@
 """Discrete-emission Hidden Markov Model with Baum-Welch and Viterbi.
 
-This replaces the original notebook's heuristic EM updates with a numerically
-stable Forward-Backward / Baum-Welch implementation while preserving the same
-modeling idea: discretize prices, learn latent market regimes, decode and
-predict.
+Fits a categorical HMM on discretized price (or return) symbols using a
+numerically stable Forward-Backward / Baum-Welch implementation, with
+Viterbi decoding for regime paths.
 """
 
 from __future__ import annotations

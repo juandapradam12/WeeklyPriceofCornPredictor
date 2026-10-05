@@ -1,10 +1,10 @@
 # Weekly Price of Corn Predictor
 
-Regime detection and one-step forecasting for **weekly corn futures prices** using Hidden Markov Models and complementary techniques.
+Detect latent market regimes and produce one-step forecasts for **weekly corn futures prices** with Hidden Markov Models and complementary statistical techniques.
 
-This repository started as a from-scratch educational HMM notebook (price discretization → discrete emissions → heuristic EM). It is now a **modular research package** with proper EM inference, classical baselines, OHLC features, statistical tests, walk-forward validation, and a full figure/report suite.
+The package covers the full research loop: feature construction, regime models, classical baselines, exogenous drivers, holdout / walk-forward validation, predictive intervals, and an interactive Streamlit explorer.
 
-Data source: [Weekly Corn Prices (Kaggle)](https://www.kaggle.com/nickwong64/corn2015-2017) / Quantopian corn futures.
+Data: weekly corn futures closes and OHLC (Quantopian / Kaggle corn series), plus optional live Yahoo Finance refreshes for corn and macro proxies.
 
 ---
 
@@ -23,9 +23,8 @@ Learning those distributions gives both a **regime timeline** and a **probabilis
 ## Architecture
 
 ```text
-data/                        # raw weekly series (price + OHLC)
+data/                        # weekly price + OHLC series
 data/cache/                  # live Yahoo corn + exogenous weekly caches
-notebooks/                   # original educational HMM notebook
 app/streamlit_app.py         # interactive regime explorer
 corn_predictor/
   data/                      # loaders, live fetch, exogenous features
@@ -80,27 +79,25 @@ flowchart LR
 
 | Family | Model | Role |
 | --- | --- | --- |
-| Original idea (fixed) | Discrete HMM + Baum–Welch | Regime detection on quantized prices |
-| Enhanced original | Discrete HMM + Drift | Regime-conditioned return forecast |
-| Complementary HMM | Discrete Return HMM | Quantized log-returns |
-| Complementary HMM | Gaussian / MV Gaussian HMM | Continuous emissions on returns |
-| Complementary HMM | OHLC Gaussian HMM | Uses open/high/low/close features |
-| Complementary HMM | Sticky Gaussian HMM | Dirichlet priors + sticky self-transitions |
-| Complementary RS | Regime-switching AR(1) (hard EM) | Interpretable AR dynamics per regime |
-| Complementary RS | Soft Regime-Switching AR(1) | Forward–Backward responsibilities + WLS |
+| Discrete HMM | Discrete HMM + Baum–Welch | Regime detection on quantized prices |
+| Discrete HMM | Discrete HMM + Drift | Regime-conditioned return forecast |
+| Discrete HMM | Discrete Return HMM | Quantized log-returns |
+| Continuous HMM | Gaussian / MV Gaussian HMM | Continuous emissions on returns |
+| Continuous HMM | OHLC Gaussian HMM | Uses open/high/low/close features |
+| Continuous HMM | Sticky Gaussian HMM | Dirichlet priors + sticky self-transitions |
+| Regime-switching | Regime-switching AR(1) (hard EM) | Interpretable AR dynamics per regime |
+| Regime-switching | Soft Regime-Switching AR(1) | Forward–Backward responsibilities + WLS |
 | Exogenous | Exo regression / Exo Gaussian HMM | Lagged oil, DXY, wheat, soy returns |
 | Classical | ARIMA(1,1,1), GARCH(1,1) | Standard time-series baselines |
 | Meta | Equal-weight ensemble | Blend Gaussian HMM + discrete drift + drift |
-| Naive | Persistence / MA / Drift | Sanity checks |
-
-**Important:** forecasting the next **cluster center** (legacy notebook idea) is kept only as an educational baseline — quantization error makes it unusable for price RMSE.
+| Baseline | Persistence / MA / Drift | Sanity checks |
 
 ---
 
 ## Algorithms (core ideas)
 
-### Discrete HMM (enhanced original)
-Quantize prices with K-Means into $M$ symbols, then fit a categorical HMM with $N$ hidden states using log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
+### Discrete HMM
+Quantize prices with K-Means into $M$ symbols, then fit a categorical HMM with $N$ hidden states using log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**.
 
 ### Gaussian / Sticky HMMs
 Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts $\kappa$ so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
@@ -212,15 +209,14 @@ From `python scripts/run_experiment.py` on `corn2013-2017.txt`:
 | Discrete HMM + Drift | 0.059 | 0.074 | 1.54 | 0.58 |
 | Regime-Switching AR | 0.060 | 0.076 | 1.56 | 0.50 |
 | ARIMA | 0.062 | 0.076 | 1.61 | 0.45 |
-| Discrete HMM (centers) | 0.576 | 0.592 | 15.13 | 0.42 |
 
 \*Persistence predicts flat prices, so directional accuracy is 0 by definition.
 
 **Takeaways**
 
-- Weekly corn is close to a random walk: RMSE gains vs persistence are small; **directional accuracy** and **regime interpretation** are the interesting outputs.
+- Weekly corn is close to a random walk: RMSE gains vs persistence are small; **directional accuracy** and **regime interpretation** are the valuable outputs.
 - **OHLC Gaussian HMM** posts the best directional accuracy on this sample.
-- DM tests do **not** find significant RMSE improvement vs persistence for the competitive models (as expected on a near-martingale series). The legacy center decoder is significantly *worse*.
+- DM tests do **not** find significant RMSE improvement vs persistence for the competitive models (expected on a near-martingale series).
 - Discrete HMM regimes separate a long low-price occupancy state from shorter elevated / volatile spells (see regime summary CSVs).
 
 ---
@@ -281,16 +277,6 @@ From `python scripts/run_experiment.py` on `corn2013-2017.txt`:
 
 ---
 
-## Original notebook
-
-Educational prototype (dictionary parameters, manual EM):
-
-`notebooks/Hidden Markov Models.ipynb`
-
-Prefer `corn_predictor` + `scripts/run_experiment.py` for experiments.
-
----
-
 ## Tests & CI
 
 ```bash
@@ -301,9 +287,7 @@ GitHub Actions runs pytest and smoke experiments on every push/PR (`.github/work
 
 ---
 
-## Advanced enhancements
-
-All of the former “next upgrades” are now implemented.
+## Advanced capabilities
 
 ### Exogenous drivers
 Lagged weekly returns of **WTI oil**, **DXY**, **WEAT**, and **SOYB** (Yahoo Finance proxies — not official USDA prints) feed:
@@ -321,7 +305,7 @@ Cached series live under `data/cache/` (currently through 2026).
 Sticky / Gaussian HMMs emit mixture return moments → lognormal price intervals. Reports include empirical coverage and a Kolmogorov–Smirnov PIT uniformity check (`reports/calibration_summary.csv`).
 
 ### Sticky Bayesian-flavoured HMM
-`StickyGaussianHMM` adds Dirichlet priors and a **sticky self-transition bias (κ)**, plus occupancy-based pruning of unused states — a practical alternative to full HDP-HMM sampling on short weekly series.
+`StickyGaussianHMM` adds Dirichlet priors and a **sticky self-transition bias ($\kappa$)**, plus occupancy-based pruning of unused states — a practical alternative to full HDP-HMM sampling on short weekly series.
 
 ### Soft EM regime-switching AR
 `SoftRegimeSwitchingAR` replaces hard Viterbi assignment with Forward–Backward responsibilities and weighted least squares.
