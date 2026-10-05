@@ -85,8 +85,7 @@ def fetch_corn_weekly(
     daily = download_ticker(CORN_TICKER, start=start, end=end)
     weekly = to_weekly_last(daily, "close").rename("price").reset_index()
     weekly = weekly.rename(columns={"date": "week"})
-    if use_cache:
-        weekly.to_csv(cache_path, index=False)
+    weekly.to_csv(cache_path, index=False)
     return weekly
 
 
@@ -116,8 +115,7 @@ def fetch_exogenous_weekly(
     exo = pd.concat(frames, axis=1).dropna(how="all").reset_index().rename(
         columns={"date": "week"}
     )
-    if use_cache:
-        exo.to_csv(cache_path, index=False)
+    exo.to_csv(cache_path, index=False)
     return exo
 
 
