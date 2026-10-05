@@ -100,28 +100,28 @@ flowchart LR
 ## Algorithms (core ideas)
 
 ### Discrete HMM (enhanced original)
-Quantize prices with K-Means into `M` symbols, then fit a categorical HMM with `N` hidden states using log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
+Quantize prices with K-Means into $M$ symbols, then fit a categorical HMM with $N$ hidden states using log-domain Forward–Backward / Baum–Welch / Viterbi. Preferred forecast path is **regime + drift**, not cluster-center decoding.
 
 ### Gaussian / Sticky HMMs
-Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts `κ` so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
+Model continuous log-returns with state-dependent Gaussians. The sticky variant adds Dirichlet row priors and extra self-transition pseudo-counts $\kappa$ so regimes persist longer — a practical stand-in for full HDP-HMM on short weekly samples.
 
 ### Soft regime-switching AR(1)
-Each regime `k` has its own AR(1) on returns `r_t`:
+Each regime $k$ has its own AR(1) on returns $r_t$:
 
-```text
-r_t = c_{z_t} + φ_{z_t} * r_{t-1} + ε_t ,    ε_t ~ N(0, σ_{z_t}^2)
-```
+$$
+r_t = c_{z_t} + \phi_{z_t}\, r_{t-1} + \varepsilon_t, \qquad \varepsilon_t \sim \mathcal{N}(0, \sigma_{z_t}^2)
+$$
 
-Soft EM updates `(c_k, φ_k, σ_k)` with Forward–Backward responsibilities instead of hard Viterbi labels.
+Soft EM updates $(c_k, \phi_k, \sigma_k)$ with Forward–Backward responsibilities instead of hard Viterbi labels.
 
 ### Exogenous models
-Lagged macro/agri proxies `x_{t-1}` enter either a linear return regression
+Lagged macro/agri proxies $x_{t-1}$ enter either a linear return regression
 
-```text
-r_t = β_0 + βᵀ x_{t-1} + u_t
-```
+$$
+r_t = \beta_0 + \beta^{\top} x_{t-1} + u_t
+$$
 
-or a multivariate Gaussian HMM emission vector `[r_t, x_{t-1}]`.
+or a multivariate Gaussian HMM emission vector $\bigl[r_t,\; x_{t-1}\bigr]$.
 
 ---
 
