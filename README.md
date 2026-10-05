@@ -24,25 +24,34 @@ Learning those distributions gives both a **regime timeline** and a **probabilis
 
 ```text
 data/                        # raw weekly series (price + OHLC)
+data/cache/                  # live Yahoo corn + exogenous weekly caches
 notebooks/                   # original educational HMM notebook
+app/streamlit_app.py         # interactive regime explorer
 corn_predictor/
-  data/                      # loaders, features, time-based splits
+  data/                      # loaders, live fetch, exogenous features
   preprocess/                # K-Means / quantile / uniform discretization
   models/
     discrete_hmm.py          # Forward–Backward + Baum–Welch + Viterbi
     hybrid.py                # regime-drift & discrete-return HMMs
     gaussian_hmm.py          # continuous Gaussian / MV Gaussian HMMs
-    regime_switching.py      # Markov-switching AR(1)
+    sticky_hmm.py            # sticky Dirichlet-regularized Gaussian HMM
+    soft_regime.py           # soft-EM regime-switching AR(1)
+    regime_switching.py      # hard-EM Markov-switching AR(1)
     classical.py             # ARIMA, GARCH, OHLC HMM, ensemble
+    exogenous.py             # exo regression + exo Gaussian HMM
     baselines.py             # persistence, MA, drift
-  evaluation/                # metrics, BIC selection, DM test, regime stats
+  evaluation/                # metrics, BIC, DM, calibration, hedge sim
   visualization/             # figures used in this README
-  pipeline.py                # end-to-end experiment
-scripts/run_experiment.py
+  pipeline.py                # core end-to-end experiment
+  advanced_pipeline.py       # sticky / exo / intervals / simulator
+scripts/
+  run_experiment.py
+  run_advanced.py
+  refresh_live_data.py
 tests/
-figures/                     # generated plots
-reports/                     # CSV metrics, forecasts, regime tables
-.github/workflows/ci.yml     # pytest + smoke experiment
+figures/
+reports/
+.github/workflows/ci.yml
 ```
 
 ```mermaid
@@ -92,7 +101,14 @@ pip install -r requirements.txt
 # or: pip install -e .
 
 python scripts/run_experiment.py
+python scripts/run_advanced.py
 python -m pytest -q
+
+# optional interactive demo
+streamlit run app/streamlit_app.py
+
+# optional live refresh (Yahoo Finance)
+python scripts/refresh_live_data.py --no-cache-read
 ```
 
 Skip the slower walk-forward block:
@@ -231,26 +247,67 @@ Prefer `corn_predictor` + `scripts/run_experiment.py` for experiments.
 python -m pytest -q
 ```
 
-GitHub Actions runs pytest and a smoke experiment on every push/PR (`.github/workflows/ci.yml`).
+GitHub Actions runs pytest and smoke experiments on every push/PR (`.github/workflows/ci.yml`).
 
 ---
 
-## Further extensions (not implemented)
+## Advanced enhancements
 
-These would be natural next upgrades if you keep investing in the repo:
+All of the former “next upgrades” are now implemented.
 
-| Idea | Why |
-| --- | --- |
-| Sticky-HDP / Bayesian nonparametrics | Infer the number of regimes instead of BIC grid search |
-| Exogenous emissions (USD, oil, USDA reports) | Corn is driven by macro/agri news, not only own lag |
-| Predictive intervals / PIT calibration | Quantify uncertainty, not only point RMSE |
-| Soft EM for regime-switching AR | Replace hard Viterbi assignment |
-| Position/hedging policy simulator | Map regimes → simple long/flat rules (research only) |
-| Live data connector | Refresh series beyond 2017 |
-| Streamlit / dashboard | Interactive regime explorer for portfolio demos |
+### Exogenous drivers
+Lagged weekly returns of **WTI oil**, **DXY**, **WEAT**, and **SOYB** (Yahoo Finance proxies — not official USDA prints) feed:
+- OLS exogenous return regression
+- Gaussian HMM on `[corn_return, exo_lags…]`
+
+```bash
+python scripts/refresh_live_data.py --no-cache-read   # refresh caches
+python scripts/run_advanced.py
+```
+
+Cached series live under `data/cache/` (currently through 2026).
+
+### Predictive intervals & PIT calibration
+Sticky / Gaussian HMMs emit mixture return moments → lognormal price intervals. Reports include empirical coverage and a Kolmogorov–Smirnov PIT uniformity check (`reports/calibration_summary.csv`).
+
+### Sticky Bayesian-flavoured HMM
+`StickyGaussianHMM` adds Dirichlet priors and a **sticky self-transition bias (κ)**, plus occupancy-based pruning of unused states — a practical alternative to full HDP-HMM sampling on short weekly series.
+
+### Soft EM regime-switching AR
+`SoftRegimeSwitchingAR` replaces hard Viterbi assignment with Forward–Backward responsibilities and weighted least squares.
+
+### Regime long/flat simulator
+Research-only long/flat policy using train-selected regimes (`reports/hedge_sim_stats.csv`). **Not investment advice.**
+
+### Streamlit explorer
+```bash
+streamlit run app/streamlit_app.py
+```
+Interactive regime decode, predictive interval, and equity overlay.
+
+### Advanced figures
+![Sticky regimes](figures/16_sticky_regimes.png)
+
+![Predictive intervals](figures/17_predictive_intervals.png)
+
+![PIT histogram](figures/18_pit_histogram.png)
+
+![Hedge equity](figures/19_hedge_equity.png)
+
+![Exogenous RMSE](figures/21_exogenous_rmse.png)
+
+### Advanced holdout snapshot
+| Model | RMSE | Dir. acc. |
+| --- | ---: | ---: |
+| Sticky Gaussian HMM | 0.074 | 0.55 |
+| Soft Regime-Switching AR | 0.075 | 0.52 |
+| Exo Gaussian HMM | 0.074 | 0.57 |
+| Exo Regression | 0.090 | 0.34 |
+
+Sticky HMM 90% intervals: empirical coverage ≈ **0.97** (slightly wide), PIT KS p ≈ **0.25** (not reject uniformity).
 
 ---
 
 ## License / disclaimer
 
-Personal research code. Futures markets are risky; nothing here is investment advice.
+Personal research code. Futures markets are risky; nothing here is investment advice. The hedge simulator is a pedagogical backtest only.
