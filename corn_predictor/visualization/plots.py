@@ -242,3 +242,98 @@ def plot_returns_by_regime(
     if save_path:
         fig.savefig(save_path, bbox_inches="tight")
     return fig
+
+
+def plot_state_selection(
+    selection_df: pd.DataFrame,
+    criterion: str = "bic",
+    title: str = "Latent-state selection",
+    save_path: Optional[Path] = None,
+) -> plt.Figure:
+    _style()
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    ax.plot(
+        selection_df["n_states"],
+        selection_df[criterion],
+        color=PALETTE["accent"],
+        lw=2,
+        marker="o",
+    )
+    best = selection_df.sort_values(criterion).iloc[0]
+    ax.scatter(
+        [best["n_states"]], [best[criterion]], color=PALETTE["accent2"], s=60, zorder=3
+    )
+    ax.set_xlabel("Number of hidden states")
+    ax.set_ylabel(criterion.upper())
+    ax.set_title(title)
+    ax.set_xticks(list(selection_df["n_states"]))
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+    return fig
+
+
+def plot_regime_durations(
+    runs_df: pd.DataFrame,
+    title: str = "Regime Duration Distribution",
+    save_path: Optional[Path] = None,
+) -> plt.Figure:
+    _style()
+    fig, ax = plt.subplots(figsize=(7.5, 4.0))
+    regimes = sorted(runs_df["regime"].unique())
+    data = [runs_df.loc[runs_df["regime"] == r, "duration"].to_numpy() for r in regimes]
+    bp = ax.boxplot(
+        data, patch_artist=True, tick_labels=[f"Regime {r}" for r in regimes]
+    )
+    for i, patch in enumerate(bp["boxes"]):
+        patch.set_facecolor(PALETTE["regimes"][i % len(PALETTE["regimes"])])
+        patch.set_alpha(0.75)
+    ax.set_ylabel("Duration (weeks)")
+    ax.set_title(title)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+    return fig
+
+
+def plot_walk_forward_errors(
+    weeks: Sequence,
+    errors: Dict[str, np.ndarray],
+    title: str = "Walk-forward absolute errors",
+    save_path: Optional[Path] = None,
+) -> plt.Figure:
+    _style()
+    fig, ax = plt.subplots(figsize=(10, 4.2))
+    colors = [PALETTE["accent"], PALETTE["accent2"], "#3a6ea5", "#b08900"]
+    for i, (name, err) in enumerate(errors.items()):
+        ax.plot(
+            weeks, err, lw=1.3, alpha=0.85, color=colors[i % len(colors)], label=name
+        )
+    ax.set_title(title)
+    ax.set_xlabel("Week")
+    ax.set_ylabel("|error|")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+    return fig
+
+
+def plot_dm_bars(
+    dm_results: Dict[str, Dict[str, float]],
+    title: str = "Diebold–Mariano vs Persistence",
+    save_path: Optional[Path] = None,
+) -> plt.Figure:
+    _style()
+    names = list(dm_results.keys())
+    stats_ = [dm_results[n]["dm_stat"] for n in names]
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    colors = [PALETTE["accent"] if s < 0 else PALETTE["accent2"] for s in stats_]
+    ax.barh(names, stats_, color=colors)
+    ax.axvline(0, color=PALETTE["ink"], lw=1)
+    ax.set_xlabel("DM statistic (negative ⇒ better than baseline)")
+    ax.set_title(title)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+    return fig

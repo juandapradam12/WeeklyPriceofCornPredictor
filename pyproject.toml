@@ -16,10 +16,12 @@ dependencies = [
   "seaborn>=0.13",
   "scipy>=1.11",
   "hmmlearn>=0.3.0",
+  "statsmodels>=0.14",
+  "arch>=6.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "statsmodels>=0.14"]
+dev = ["pytest>=7.0"]
 
 [tool.setuptools.packages.find]
 include = ["corn_predictor*"]
