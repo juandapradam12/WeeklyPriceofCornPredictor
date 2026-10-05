@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "corn-predictor"
+version = "0.2.0"
+description = "Weekly corn price regime detection and forecasting with HMMs and complementary models"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "matplotlib>=3.7",
+  "seaborn>=0.13",
+  "scipy>=1.11",
+  "hmmlearn>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "statsmodels>=0.14"]
+
+[tool.setuptools.packages.find]
+include = ["corn_predictor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
